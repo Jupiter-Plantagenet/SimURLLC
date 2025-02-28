@@ -1,6 +1,6 @@
 # SimURLLC
 
-A discrete-event simulator built with SimPy to evaluate scheduling algorithms for 6G Ultra-Reliable Low-Latency Communication (URLLC). **Designed for a Q2-journal publication**, it models a single base station and URLLC devices under realistic 6G conditions.
+A discrete-event simulator built with SimPy to evaluate scheduling algorithms for 6G Ultra-Reliable Low-Latency Communication (URLLC). **Designed for a journal publication**, it models a single base station and URLLC devices under realistic 6G conditions.
 
 ## Overview
 - **Purpose**: Compare scheduling policies (e.g., EDF, Hybrid EDF-Preemptive) for 6G URLLC.
