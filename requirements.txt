@@ -1,2 +1,7 @@
 # requirements.txt
-# Project dependencies for SimURLLC (e.g., simpy, pyyaml, numpy, matplotlib)
+# Dependencies for SimURLLC project
+
+simpy>=3.0.13        # Discrete-event simulation library
+pyyaml>=6.0.1        # YAML parsing for config file
+numpy>=1.24.0        # Numerical computations for metrics
+matplotlib>=3.8.0    # Plotting for visualization
