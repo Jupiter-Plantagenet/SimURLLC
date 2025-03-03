@@ -22,8 +22,10 @@ class BaseStation:
         self.resource_blocks = [ResourceBlock(env, i, slot_duration=0.125, subcarriers=12) 
                                for i in range(num_rbs)]
         self.scheduling_policy = scheduling_policy  # Which scheduling algorithm to use (e.g., "non-preemptive")
-        # Create a SimPy Store to act as a queue for devices waiting for resources
-        self.waiting_queue = simpy.Store(env)
+        """ # Create a SimPy Store to act as a queue for devices waiting for resources: Grok
+        self.waiting_queue = simpy.Store(env) """
+        # Change to PriorityStore: Gemini
+        self.waiting_queue = simpy.PriorityStore(env)
         # Dictionary to track which resource blocks are in use: {RB ID: (device, packet, start_time)}
         self.active_transmissions = {}
         # Create a ChannelModel to handle SINR and data rate calculations
@@ -32,11 +34,11 @@ class BaseStation:
         self.env.process(self.interference_process(interference_rate=1))
 
     def request_resource(self, device, packet):
-        # This method handles a device’s request to use a resource block for a packet
+        # This method handles a device's request to use a resource block for a packet
         logger = get_logger()  # Get the logger to record events
         # Log that a request is happening with the current time, device ID, and packet ID
         logger.log(self.env.now, device.id, packet.id, "request")
-        # Print a message to show what’s happening (useful for debugging)
+        # Print a message to show what's happening (useful for debugging)
         print(f"Time {self.env.now:.3f}: Device {device.id} requests packet {packet.id}")
 
         # Choose which scheduling algorithm to use based on the policy
@@ -62,31 +64,34 @@ class BaseStation:
             # Call the 5G fixed-priority scheduler
             yield self.env.process(fiveg_fixed_priority(self, device, packet))
         else:
-            # If the policy isn’t recognized, print an error and stop
+            # If the policy isn't recognized, print an error and stop
             print(f"Error: Unknown scheduling policy '{self.scheduling_policy}'")
             raise ValueError("Invalid scheduling policy")
 
     def release_resource(self, resource_block, device, packet):
         # This method frees up a resource block after a packet is transmitted
         logger = get_logger()  # Get the logger to record the event
-        # Get the start time of this transmission from the active_transmissions dictionary
-        start_time = self.active_transmissions[id(resource_block)][2]
-        # Remove this resource block from active transmissions since it’s now free
-        del self.active_transmissions[id(resource_block)]
-        # Calculate how long the packet took to transmit (latency)
-        latency = self.env.now - packet.creation_time
-        # Tell the device to record its metrics (e.g., packets sent, latency)
-        device.record_metrics(packet, latency, success=True)
-        # Log that the transmission ended with all relevant metrics
-        logger.log(self.env.now, device.id, packet.id, "transmission_end", 
-                   latency=latency, aoi=device.aoi, sinr=resource_block.current_SINR)
-        # Print a message to confirm the resource block is released
-        print(f"Time {self.env.now:.3f}: Device {device.id} released RB {resource_block.id}, latency {latency:.6f}")
-        # Check if there are devices waiting in the queue
+        try:
+            # Get the start time from active_transmissions
+            start_time = self.active_transmissions[id(resource_block)][2]
+            # Calculate latency as the time from packet creation to now
+            latency = self.env.now - packet.creation_time
+            # Record metrics for this packet (success=True)
+            device.record_metrics(packet, latency, success=True)
+            # Log the end of transmission with metrics
+            logger.log(self.env.now, device.id, packet.id, "transmission_end",
+                       latency=latency, aoi=device.aoi, sinr=resource_block.current_SINR)
+            # Print a message for debugging
+            print(f"Time {self.env.now:.3f}: Device {device.id} released RB {resource_block.id}, latency {latency:.6f}")
+        finally:
+            # Remove this resource block from active transmissions
+            del self.active_transmissions[id(resource_block)]
+
+        # If there are devices waiting in the queue, process the next one
         if self.waiting_queue.items:
-            # Get the next device and packet from the queue (order depends on scheduler)
-            next_device, next_packet = yield self.waiting_queue.get()
-            # Start a new process to handle this next request
+            # Get the next device and packet from the queue
+            _, (next_device, next_packet) = yield self.waiting_queue.get()
+            # Start a new process to handle this request
             self.env.process(self.request_resource(next_device, next_packet))
 
     def run(self, sim_duration):
@@ -110,7 +115,7 @@ class BaseStation:
         total_noise_db = 10 * math.log10(total_noise_linear)
         # SINR in dB is signal power minus total noise power
         sinr_db = signal_power_db - total_noise_db
-        # Ensure SINR isn’t too low; set a minimum of 5 dB for a usable signal
+        # Ensure SINR isn't too low; set a minimum of 5 dB for a usable signal
         sinr_db = max(sinr_db, 5.0)
         # Print for debugging to check signal, noise, and SINR values
         print(f"Signal: {signal_power_db:.2f} dB, Noise+Int: {total_noise_db:.2f} dB, SINR: {sinr_db:.2f} dB")
@@ -153,9 +158,9 @@ class URLLCDevice:
         self.packets_sent = 0  # Count of successfully transmitted packets
         self.packets_dropped = 0  # Count of packets dropped (e.g., due to deadline misses)
         self.latencies = []  # List to store latency of each sent packet
-        self.aoi = 0.0  # Age of Information: time since last update’s creation
+        self.aoi = 0.0  # Age of Information: time since last update's creation
         self.throughput_history = []  # List of (time, throughput) tuples for this device
-        self.last_update_time = 0.0  # Time when the last packet’s data was fresh (creation time)
+        self.last_update_time = 0.0  # Time when the last packet's data was fresh (creation time)
         # Start the packet generation process immediately when the device is created
         self.env.process(self.generate_packets())
 
@@ -179,10 +184,14 @@ class URLLCDevice:
     def send_packet(self, packet):
         # This method tries to send a packet to the base station and handles deadlines
         logger = get_logger()  # Get the logger to record events
-        # Create an event to track when the packet’s deadline is reached
+        # Create an event to track when the packet's deadline is reached
         deadline_event = self.env.event()
-        # Start a process to check if the deadline is missed
-        self.env.process(self.deadline_check(packet, deadline_event))
+        
+        """Grok: # Start a process to check if the deadline is missed
+        self.env.process(self.deadline_check(packet, deadline_event))"""
+
+        # Store the deadline_check process: Gemini
+        deadline_check_process = self.env.process(self.deadline_check(packet, deadline_event))
         # Start the transmission process by requesting a resource from the base station
         transmission = self.env.process(self.base_station.request_resource(self, packet))
         # Wait for either the transmission to finish or the deadline to hit
@@ -197,37 +206,51 @@ class URLLCDevice:
             logger.log(self.env.now, self.id, packet.id, "dropped_deadline", latency=latency)
             # Print a message to show the packet was dropped
             print(f"Time {self.env.now:.3f}: Device {self.id} dropped packet {packet.id} (deadline missed)")
+        # New, from Gemini: If transmission succeeded, interrupt the deadline_check process
+        elif transmission in result:
+             deadline_check_process.interrupt()
         # Print the result of sending (for debugging, shows which event triggered)
         print(f"Time {self.env.now:.3f}: Sending packet {packet.id}, result: {result}")
 
     def record_metrics(self, packet, latency, success):
-        # This method updates the device’s performance metrics after a packet is sent or dropped
+        # This method updates the device's performance metrics after a packet is sent or dropped
         if success:
             # If the packet was successfully sent:
             self.packets_sent += 1  # Increment the count of sent packets
-            self.latencies.append(latency)  # Add this packet’s latency to the list
-            # Update the last update time to when this packet was created (its data’s freshness)
+            self.latencies.append(latency)  # Add this packet's latency to the list
+            # Update the last update time to when this packet was created (its data's freshness)
             self.last_update_time = packet.creation_time
             # AoI is 0 right after a successful transmission (data is fresh)
             self.aoi = 0.0
             # Calculate throughput for this packet (bits per second) and store it
             throughput = self.packet_size / latency if latency > 0 else 0
             self.throughput_history.append((self.env.now, throughput))
-            # Print the recorded metrics for debugging
-            print(f"Time {self.env.now:.3f}: Recorded latency {latency:.6f}, AoI {self.aoi:.6f}")
+            # Print the recorded metrics for debugging with more detail
+            print(f"Time {self.env.now:.3f}: Device {self.id} - SUCCESSFUL transmission of packet {packet.id}")
+            print(f"  - Recorded latency: {latency:.6f}s")
+            print(f"  - Packet size: {self.packet_size} bits")
+            print(f"  - Throughput: {throughput:.2f} bps")
+            print(f"  - Total packets sent: {self.packets_sent}")
+            print(f"  - AoI: {self.aoi:.6f}s")
         else:
             # If the packet was dropped (e.g., deadline missed):
             self.packets_dropped += 1  # Increment the dropped packet count
-        # Update AoI as the time since the last successful packet’s creation
+            print(f"Time {self.env.now:.3f}: Device {self.id} - DROPPED packet {packet.id}")
+            print(f"  - Total packets dropped: {self.packets_dropped}")
+        
+        # Update AoI as the time since the last successful packet's creation
         # This captures staleness for queued packets too
         self.aoi = max(self.aoi, self.env.now - self.last_update_time)
 
     def deadline_check(self, packet, deadline_event):
         # This method triggers an event if the packet misses its deadline
         # Wait until the deadline (or 0 if already passed) to avoid negative timeouts
-        yield self.env.timeout(max(0, packet.deadline - self.env.now))
-        # Trigger the deadline event to signal that the packet is late
+        try:
+            yield self.env.timeout(max(0, packet.deadline - self.env.now))
+        except simpy.Interrupt:
+            pass # Packet was sent, so no action needed
         deadline_event.succeed()
+      
 
 
 class ResourceBlock:
@@ -266,6 +289,16 @@ class ChannelModel:
         self.transmission_power = 23  # Power devices use to send signals in dBm
 
     def calculate_data_rate(self, SINR):
+        # Calculate bandwidth per RB:
+        bandwidth_per_rb = 180000  # 180 kHz per resource block (standard in cellular networks)
+        sinr_linear = 10 ** (SINR / 10)
+        if sinr_linear <= 0:
+            return 1000000  # Minimum data rate: 1 Mbps
+        data_rate = bandwidth_per_rb * math.log2(1 + sinr_linear)
+        return min(data_rate, 20000000)  # keep the 20 Mbps cap
+
+"""Grok:
+    def calculate_data_rate(self, SINR):
         # This method turns SINR (in dB) into a data rate (bits per second)
         bandwidth = 100e6  # Bandwidth in Hz (100 MHz, typical for 6G)
         # Convert SINR from dB to linear scale (e.g., 10 dB becomes 10)
@@ -273,7 +306,9 @@ class ChannelModel:
         # If SINR is too low (or negative), use a minimum data rate
         if sinr_linear <= 0:
             return 1000000  # 1 Mbps as a fallback
-        # Calculate data rate using Shannon’s formula: bandwidth * log2(1 + SINR)
+        # Calculate data rate using Shannon's formula: bandwidth * log2(1 + SINR)
         data_rate = bandwidth * math.log2(1 + sinr_linear)
         # Cap the data rate at 20 Mbps (from config) to keep it realistic
         return min(data_rate, 20000000)
+"""
+    

@@ -110,9 +110,10 @@ def main():
                 "aoi": aoi
             })
 
-        # Calculate Jain’s Fairness Index across all devices’ throughputs
+        # Calculate Jain's Fairness Index across all devices' throughputs
         throughputs = [stat["throughput"] for stat in device_stats]
-        fairness = (sum(throughputs) ** 2) / (len(throughputs) * sum(t ** 2 for t in throughputs)) if throughputs else 0
+        sum_squared = sum(t ** 2 for t in throughputs)
+        fairness = (sum(throughputs) ** 2) / (len(throughputs) * sum_squared) if throughputs and sum_squared > 0 else 0
 
         # Calculate run-wide averages
         avg_latency_run = sum(stat["avg_latency"] for stat in device_stats) / len(device_stats)

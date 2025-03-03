@@ -12,12 +12,12 @@ num_devices: 10
 arrival_rate: 10
 
 # Size of each packet in bits (100 KB = 102400 bits makes transmissions noticeable, ~5 ms)
-packet_size: 102400
+packet_size: 1024
 
 # Number of resource blocks at the base station (3 RBs means contention with 10 devices)
 num_resource_blocks: 3
 
-# Duration of each slot in milliseconds (0.125 ms is typical for 6G’s fast timing)
+# Duration of each slot in milliseconds (0.125 ms is typical for 6G's fast timing)
 slot_duration: 0.125
 
 # Number of subcarriers per resource block (12 is standard for OFDM in 6G)
@@ -30,7 +30,7 @@ data_rate_base: 20000000
 priority_levels: [1, 2, 3]
 
 # Maximum allowed latency in seconds (1 ms = 0.001 s is the 6G URLLC goal)
-max_latency: 0.001
+max_latency: 0.005
 
 # How often interference bursts happen, in bursts per second (1 means ~10 bursts in 10 s)
 interference_rate: 1
@@ -46,3 +46,5 @@ transmission_power: 23
 
 # List of seeds for multiple runs (5 seeds ensure results are statistically solid)
 random_seeds: [42, 43, 44, 45, 46]
+
+scheduling_policy: "hybrid-edf-preemptive" #Uncomment to test other schedulers
