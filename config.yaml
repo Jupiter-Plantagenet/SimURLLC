@@ -1,50 +1,17 @@
 # config.yaml
-# This file stores all the settings (parameters) for the SimURLLC simulator.
-# Each line sets a value we use to control how the simulation runs.
-
-# How long the simulation runs in seconds (10 seconds gives us enough data to analyze)
-sim_duration: 10
-
-# Number of devices sending packets (10 devices creates enough competition for resources)
+sim_duration: 10  # Seconds
 num_devices: 10
-
-# How often each device generates packets, in packets per second (10 is good for debugging)
-arrival_rate: 10
-
-# Size of each packet in bits (100 KB = 102400 bits makes transmissions noticeable, ~5 ms)
-packet_size: 1024
-
-# Number of resource blocks at the base station (3 RBs means contention with 10 devices)
-num_resource_blocks: 3
-
-# Duration of each slot in milliseconds (0.125 ms is typical for 6G's fast timing)
-slot_duration: 0.125
-
-# Number of subcarriers per resource block (12 is standard for OFDM in 6G)
+arrival_rate: 20  # Base arrival rate
+packet_size: 16000  # Base packet size in bits
+num_resource_blocks: 5
+slot_duration: 0.125  # ms
 subcarriers: 12
-
-# Base data rate per resource block in bits per second (20 Mbps is realistic, adjusted by SINR)
-data_rate_base: 20000000
-
-# List of possible priority levels (1 is highest, 3 lowest; affects scheduling)
+data_rate_base: 20000000  # Base data rate in bps
 priority_levels: [1, 2, 3]
-
-# Maximum allowed latency in seconds (1 ms = 0.001 s is the 6G URLLC goal)
-max_latency: 0.005
-
-# How often interference bursts happen, in bursts per second (1 means ~10 bursts in 10 s)
-interference_rate: 1
-
-# How fast the signal weakens with distance (3.5 is typical for urban areas)
+max_latency: 0.001  # 1 ms
+interference_rate: 1  # Bursts/s
 path_loss_exponent: 3.5
-
-# Background noise power in dBm/Hz (-174 is standard thermal noise at room temp)
-noise_power: -174
-
-# Power devices use to send signals in dBm (23 dBm ~ 200 mW, common for small cells)
-transmission_power: 23
-
-# List of seeds for multiple runs (5 seeds ensure results are statistically solid)
+noise_power: -174  # dBm/Hz
+transmission_power: 23  # dBm
 random_seeds: [42, 43, 44, 45, 46]
-
-scheduling_policy: "hybrid-edf-preemptive" #Uncomment to test other schedulers
+scheduling_policy: "round-robin"  # Options: preemptive, non-preemptive, round-robin, edf, fiveg-fixed, hybrid-edf 

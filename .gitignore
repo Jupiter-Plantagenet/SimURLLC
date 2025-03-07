@@ -1,2 +1,7 @@
-/venv
 /docs
+/results
+/logs
+__pycache__/
+/post
+
+sim_urllc_summary.txt
