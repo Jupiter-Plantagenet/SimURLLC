@@ -1,17 +1,72 @@
 # config.yaml
-sim_duration: 10  # Seconds
-num_devices: 10
-arrival_rate: 20  # Base arrival rate
-packet_size: 16000  # Base packet size in bits
-num_resource_blocks: 5
+# URLLC Simulator Configuration
+
+# Simulation parameters
+sim_duration: 100.0  # Simulation duration in seconds (increased for statistical significance)
+num_devices: 50      # Number of devices in the simulation (increased for realistic network load)
+num_resource_blocks: 10  # Number of resource blocks at the base station (increased for more capacity)
+
+# Traffic parameters
+arrival_rate: 10.0   # Base packet arrival rate (packets/second)
+packet_size: 1000    # Base packet size in bits
+max_latency: 0.001   # Maximum acceptable latency (1ms for URLLC)
+
+# Scheduling parameters
+scheduling_policy: "round-robin"  # Options: preemptive, non-preemptive, round-robin, edf, fiveg-fixed, hybrid-edf
+
+# Device-specific configurations (overrides defaults)
+device_configs:
+  - count: 15         # High priority devices
+    priority: 1       # Priority level (1 = highest)
+    arrival_rate: 15.0  # Higher arrival rate for high priority devices
+    packet_size: 800    # Smaller packets for high priority
+    max_latency: 0.0005  # Tighter latency requirement (0.5ms)
+
+  - count: 15         # Medium priority devices
+    priority: 2       # Medium priority
+    arrival_rate: 12.0
+    packet_size: 1000
+    max_latency: 0.001  # Standard URLLC requirement (1ms)
+
+  - count: 20         # Low priority devices
+    priority: 3       # Low priority
+    arrival_rate: 8.0
+    packet_size: 1200
+    max_latency: 0.002  # Relaxed latency requirement (2ms)
+
+# Initial burst parameters
+initial_burst_size: 20  # Generate an initial burst of packets to kickstart the simulation
+
+# Advanced parameters
+channel_model:
+  path_loss_exponent: 3.5
+  noise_power: -174  # dBm/Hz
+  sinr_threshold: 5.0  # dB - Threshold below which packets are dropped
+
+# Base parameters
 slot_duration: 0.125  # ms
 subcarriers: 12
 data_rate_base: 20000000  # Base data rate in bps
-priority_levels: [1, 2, 3]
-max_latency: 0.001  # 1 ms
-interference_rate: 1  # Bursts/s
-path_loss_exponent: 3.5
-noise_power: -174  # dBm/Hz
+interference_rate: 2  # Bursts/s
 transmission_power: 23  # dBm
-random_seeds: [42, 43, 44, 45, 46]
-scheduling_policy: "round-robin"  # Options: preemptive, non-preemptive, round-robin, edf, fiveg-fixed, hybrid-edf 
+path_loss_exponent: 3.5  # For backward compatibility
+noise_power: -174  # dBm/Hz, for backward compatibility
+
+# Experimental parameters
+random_seed: 42      # Set to null for random behavior
+
+# Multiple random seeds for statistical significance (30+ seeds)
+random_seeds: [
+  42, 43, 44, 45, 46, 47, 48, 49, 50, 51,
+  52, 53, 54, 55, 56, 57, 58, 59, 60, 61,
+  62, 63, 64, 65, 66, 67, 68, 69, 70, 71,
+  72, 73, 74, 75, 76, 77, 78, 79, 80, 81
+]
+
+# Priority levels
+priority_levels: [1, 2, 3]
+
+# Channel variation parameters
+time_varying_channel: true  # Enable time-varying channel conditions
+channel_variation_period: 10.0  # Period of channel variation in seconds
+channel_variation_amplitude: 0.5  # Amplitude of channel variation 
